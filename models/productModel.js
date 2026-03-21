@@ -29,7 +29,8 @@ const productSchema = new mongoose.Schema({
     default: 0
   },
   colors: [{
-    type: String
+    color: { type: String },
+    image: { type: String, default: 'no-image.jpg' }
   }],
   sizes: [{
     type: String

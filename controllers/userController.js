@@ -18,7 +18,7 @@ const sendOtp = async (req, res) => {
     const response = await axios.post(
       `https://cpaas.messagecentral.com/verification/v3/send?countryCode=91&customerId=${OTP_CUSTOMER_ID}&flowType=SMS&mobileNumber=${mobileno}`,
       {},
-      { headers: { authToken: OTP_AUTH_TOKEN } }
+      { headers: { authToken: OTP_AUTH_TOKEN }, timeout: 10000 }
     );
 
     res.status(200).json({
@@ -26,7 +26,14 @@ const sendOtp = async (req, res) => {
       verificationId: response.data?.data?.verificationId,
     });
   } catch (err) {
-    res.status(500).json({ message: err.response?.data?.message || err.message });
+    // Log full error details to backend console for debugging
+    console.error("sendOtp error:", {
+      message: err.message,
+      status: err.response?.status,
+      data: err.response?.data,
+    });
+    const userMsg = err.response?.data?.message || err.response?.data?.error || err.message;
+    res.status(500).json({ message: userMsg });
   }
 };
 
@@ -37,7 +44,7 @@ const verifyOtp = async (req, res) => {
 
     const response = await axios.get(
       `https://cpaas.messagecentral.com/verification/v3/validateOtp?countryCode=91&mobileNumber=${userData.mobileno}&verificationId=${verificationId}&customerId=${OTP_CUSTOMER_ID}&code=${otp}`,
-      { headers: { authToken: OTP_AUTH_TOKEN } }
+      { headers: { authToken: OTP_AUTH_TOKEN }, timeout: 10000 }
     );
 
     if (response.data?.responseCode === 200 || response.data?.data?.verificationStatus === "VERIFICATION_COMPLETED") {
@@ -159,7 +166,7 @@ const forgotPasswordOtp = async (req, res) => {
     const response = await axios.post(
       `https://cpaas.messagecentral.com/verification/v3/send?countryCode=91&customerId=${OTP_CUSTOMER_ID}&flowType=SMS&mobileNumber=${user.mobileno}`,
       {},
-      { headers: { authToken: OTP_AUTH_TOKEN } }
+      { headers: { authToken: OTP_AUTH_TOKEN }, timeout: 10000 }
     );
 
     res.status(200).json({
@@ -181,7 +188,7 @@ const resetPassword = async (req, res) => {
 
     const response = await axios.get(
       `https://cpaas.messagecentral.com/verification/v3/validateOtp?countryCode=91&mobileNumber=${user.mobileno}&verificationId=${verificationId}&customerId=${OTP_CUSTOMER_ID}&code=${otp}`,
-      { headers: { authToken: OTP_AUTH_TOKEN } }
+      { headers: { authToken: OTP_AUTH_TOKEN }, timeout: 10000 }
     );
 
     const status = response.data?.data?.verificationStatus;

@@ -4,6 +4,7 @@ const router = express.Router();
 const {
   createCoupon,
   getPopularCoupons,
+  getActiveCoupons,
   getAllCoupons,
   applyCoupon,
   updateCoupon,
@@ -12,6 +13,7 @@ const {
 
 router.post("/create", createCoupon);
 router.get("/popular", getPopularCoupons);
+router.get("/active", getActiveCoupons);
 router.get("/", getAllCoupons);
 router.post("/apply", applyCoupon);
 

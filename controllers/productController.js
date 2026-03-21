@@ -37,7 +37,18 @@ exports.addProduct = async (req, res) => {
     };
 
     if (oldPrice) productData.oldPrice = oldPrice;
-    if (colors) productData.colors = Array.isArray(colors) ? colors : colors.split(',');
+
+    // Handle colors with per-color images
+    const colorsRaw = req.body['colors[]'] || colors;
+    if (colorsRaw) {
+      const colorArr = Array.isArray(colorsRaw) ? colorsRaw : [colorsRaw];
+      const colorImages = req.files['colorImages'] || [];
+      productData.colors = colorArr.map((hex, i) => ({
+        color: hex,
+        image: colorImages[i] ? colorImages[i].filename : 'no-image.jpg'
+      }));
+    }
+
     const sizesRaw = req.body.sizes || req.body['sizes[]'];
     if (sizesRaw) productData.sizes = Array.isArray(sizesRaw) ? sizesRaw : [sizesRaw];
 
@@ -134,7 +145,18 @@ exports.updateProduct = async (req, res) => {
 
     // Handle optional fields
     if (oldPrice) updates.oldPrice = oldPrice;
-    if (colors) updates.colors = Array.isArray(colors) ? colors : colors.split(',');
+
+    // Handle colors with per-color images
+    const colorsRaw = req.body['colors[]'] || colors;
+    if (colorsRaw) {
+      const colorArr = Array.isArray(colorsRaw) ? colorsRaw : [colorsRaw];
+      const colorImages = req.files['colorImages'] || [];
+      updates.colors = colorArr.map((hex, i) => ({
+        color: hex,
+        image: colorImages[i] ? colorImages[i].filename : 'no-image.jpg'
+      }));
+    }
+
     const sizesRaw = req.body.sizes || req.body['sizes[]'];
     if (sizesRaw) updates.sizes = Array.isArray(sizesRaw) ? sizesRaw : [sizesRaw];
 
