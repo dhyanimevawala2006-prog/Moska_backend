@@ -43,6 +43,11 @@ const productSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  popular: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
   createdAt: {
     type: Date,
     default: Date.now,

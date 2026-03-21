@@ -28,7 +28,7 @@ app.use((req, res, next) => {
 // Routes
 app.use("/api", require("./routes/userRoute"));
 app.use("/api/categories", require("./routes/categoryRoute"));
-app.use("/api/product", require("./routes/productRoute"));
+app.use("/api/products", require("./routes/productRoute"));
 app.use("/api/cart", require("./routes/cartRoute"));
 app.use("/api/order", require("./routes/oderRoutes"));
 app.use("/api/ratings", require("./routes/ratingRoute"));

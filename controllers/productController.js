@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 // Add Product
 exports.addProduct = async (req, res) => {
   try {
-    const { pname, category, price, description, stock, oldPrice, colors } = req.body;
+    const { pname, category, price, description, stock, oldPrice, colors, popular } = req.body;
     const mainImage = req.files['pic'] ? req.files['pic'][0].filename : 'no-image.jpg';
     const hoverImage = req.files['picHover'] ? req.files['picHover'][0].filename : 'no-image.jpg';
 
@@ -33,7 +33,8 @@ exports.addProduct = async (req, res) => {
       description,
       stock: stock || 0,
       pic1: mainImage,
-      picHover: hoverImage
+      picHover: hoverImage,
+      popular: popular !== undefined ? (popular === true || popular === 'true') : false
     };
 
     if (oldPrice) productData.oldPrice = oldPrice;
@@ -108,14 +109,14 @@ exports.updateProduct = async (req, res) => {
     console.log('Update request body:', req.body);
     console.log('Update request files:', req.files);
     
-    const { pname, category, price, description, stock, oldPrice, colors } = req.body;
+    const { pname, category, price, description, stock, oldPrice, colors, popular } = req.body;
     
-    const updates = {
-      pname,
-      price,
-      description,
-      stock: stock || 0
-    };
+    const updates = {};
+    if (pname !== undefined) updates.pname = pname;
+    if (price !== undefined) updates.price = price;
+    if (description !== undefined) updates.description = description;
+    if (stock !== undefined) updates.stock = stock || 0;
+    if (popular !== undefined) updates.popular = popular === true || popular === 'true';
 
     // Handle category (same as add product)
     if (category) {
@@ -179,6 +180,31 @@ exports.deleteProduct = async (req, res) => {
   try {
     await Product.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: 'Product deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Get Popular Products
+exports.getPopularProducts = async (req, res) => {
+  try {
+    const products = await Product.find({ popular: true }).populate('category');
+    res.json({ success: true, data: products });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Get 5 Random Popular Products
+exports.getRandomPopularProducts = async (req, res) => {
+  try {
+    const products = await Product.aggregate([
+      { $match: { popular: true } },  // only strictly true
+      { $sample: { size: 5 } }
+    ]);
+
+    const populated = await Product.populate(products, { path: 'category' });
+    res.json({ success: true, data: populated });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
