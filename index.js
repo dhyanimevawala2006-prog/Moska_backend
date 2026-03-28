@@ -1,7 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const couponRoutes = require("./routes/couponRoutes");
+require("dotenv").config();
 
 
 const app = express();
@@ -9,7 +9,11 @@ const app = express();
 // CORS
 app.use(
   cors({
-    origin: "http://localhost:4200",
+    origin: [
+      "http://localhost:4200",
+      "https://moska.netlify.app",
+      "https://moska-frontend.onrender.com",
+    ],
     credentials: true,
   }),
 );
@@ -37,6 +41,7 @@ app.use("/api/wishlist", require("./routes/wishlistRoute"));
 app.use("/api/contact", require("./routes/contactRoute"));
 app.use("/api/admin/stats", require("./routes/adminStatsRoute"));
 app.use("/api/admin/notifications", require("./routes/notificationRoute"));
+app.use("/api/newsletter", require("./routes/newsletterRoute"));
 
 // Coupon routes
 
@@ -51,7 +56,7 @@ app.get("/api/health", (req, res) => {
 
 // MongoDB
 mongoose
-  .connect("mongodb://localhost:27017/estore_db", {
+  .connect(process.env.MONGO_URI || "mongodb://localhost:27017/estore_db", {
     serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
   })
