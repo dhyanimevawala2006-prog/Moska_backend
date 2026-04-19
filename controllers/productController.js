@@ -1,28 +1,25 @@
-const Product = require('../models/productModel');
+const Product  = require('../models/productModel');
 const Category = require('../models/categoryModel');
 const mongoose = require('mongoose');
 
-// Add Product
+// Add Product — receives Cloudinary URLs directly from frontend
 exports.addProduct = async (req, res) => {
   try {
-    const { pname, category, price, description, stock, oldPrice, colors, popular } = req.body;
-    const mainImage = req.files['pic'] ? req.files['pic'][0].filename : 'no-image.jpg';
-    const hoverImage = req.files['picHover'] ? req.files['picHover'][0].filename : 'no-image.jpg';
+    const { pname, category, price, description, stock, oldPrice, popular } = req.body;
 
-    // Find category by name or ID
+    // Images are already Cloudinary URLs sent from the frontend
+    const mainImage  = req.body.pic      || 'no-image.jpg';
+    const hoverImage = req.body.picHover || 'no-image.jpg';
+
+    // Resolve category
     let categoryId = category;
     if (!mongoose.Types.ObjectId.isValid(category)) {
-      // If not a valid ObjectId, search by name
       const categoryDoc = await Category.findOne({ cat_name: category });
       if (categoryDoc) {
         categoryId = categoryDoc._id;
       } else {
-        // Create new category if not found
-        const newCategory = await Category.create({ 
-          cat_name: category, 
-          cat_pic: 'no-image.jpg' 
-        });
-        categoryId = newCategory._id;
+        const newCat = await Category.create({ cat_name: category, cat_pic: 'no-image.jpg' });
+        categoryId = newCat._id;
       }
     }
 
@@ -31,22 +28,27 @@ exports.addProduct = async (req, res) => {
       category: categoryId,
       price,
       description,
-      stock: stock || 0,
-      pic1: mainImage,
+      stock:   stock || 0,
+      pic1:    mainImage,
       picHover: hoverImage,
       popular: popular !== undefined ? (popular === true || popular === 'true') : false
     };
 
     if (oldPrice) productData.oldPrice = oldPrice;
 
-    // Handle colors with per-color images
-    const colorsRaw = req.body['colors[]'] || colors;
+    // Colors — hex values + Cloudinary URLs already resolved by frontend
+    const colorsRaw      = req.body['colors[]']      || req.body.colors;
+    const colorImagesRaw = req.body['colorImages[]']  || req.body.colorImages;
+
     if (colorsRaw) {
-      const colorArr = Array.isArray(colorsRaw) ? colorsRaw : [colorsRaw];
-      const colorImages = req.files['colorImages'] || [];
+      const colorArr      = Array.isArray(colorsRaw)      ? colorsRaw      : [colorsRaw];
+      const colorImageArr = colorImagesRaw
+        ? (Array.isArray(colorImagesRaw) ? colorImagesRaw : [colorImagesRaw])
+        : [];
+
       productData.colors = colorArr.map((hex, i) => ({
         color: hex,
-        image: colorImages[i] ? colorImages[i].filename : 'no-image.jpg'
+        image: colorImageArr[i] || 'no-image.jpg'
       }));
     }
 
@@ -54,7 +56,7 @@ exports.addProduct = async (req, res) => {
     if (sizesRaw) productData.sizes = Array.isArray(sizesRaw) ? sizesRaw : [sizesRaw];
 
     const product = await Product.create(productData);
-
+    console.log('✅ Product saved:', product._id);
     res.status(201).json({ success: true, message: 'Product added successfully', data: product });
   } catch (err) {
     console.error('Error adding product:', err);
@@ -65,16 +67,7 @@ exports.addProduct = async (req, res) => {
 // Get All Products
 exports.getAllProducts = async (req, res) => {
   try {
-    console.time('getAllProducts');
-    
-    const products = await Product.find()
-      .populate('category')
-      .maxTimeMS(5000) // 5 second timeout
-      .exec();
-    
-    console.timeEnd('getAllProducts');
-    console.log(`Found ${products.length} products`);
-    
+    const products = await Product.find().populate('category').maxTimeMS(5000).exec();
     res.json({ success: true, data: products });
   } catch (err) {
     console.error('Error in getAllProducts:', err);
@@ -94,31 +87,27 @@ exports.getProductById = async (req, res) => {
 
 exports.getProductCatById = async (req, res) => {
   try {
-    const product = await Product.find({ category: req.params.id })
-      .populate('category');
-
-    res.json({ success: true, data: product });
+    const products = await Product.find({ category: req.params.id }).populate('category');
+    res.json({ success: true, data: products });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// Update Product
+// Update Product — receives Cloudinary URLs directly from frontend
 exports.updateProduct = async (req, res) => {
   try {
-    console.log('Update request body:', req.body);
-    console.log('Update request files:', req.files);
-    
-    const { pname, category, price, description, stock, oldPrice, colors, popular } = req.body;
-    
-    const updates = {};
-    if (pname !== undefined) updates.pname = pname;
-    if (price !== undefined) updates.price = price;
-    if (description !== undefined) updates.description = description;
-    if (stock !== undefined) updates.stock = stock || 0;
-    if (popular !== undefined) updates.popular = popular === true || popular === 'true';
+    const { pname, category, price, description, stock, oldPrice, popular } = req.body;
 
-    // Handle category (same as add product)
+    const updates = {};
+    if (pname       !== undefined) updates.pname       = pname;
+    if (price       !== undefined) updates.price       = price;
+    if (description !== undefined) updates.description = description;
+    if (stock       !== undefined) updates.stock       = stock || 0;
+    if (popular     !== undefined) updates.popular     = popular === true || popular === 'true';
+    if (oldPrice)                  updates.oldPrice    = oldPrice;
+
+    // Resolve category
     if (category) {
       let categoryId = category;
       if (!mongoose.Types.ObjectId.isValid(category)) {
@@ -126,49 +115,39 @@ exports.updateProduct = async (req, res) => {
         if (categoryDoc) {
           categoryId = categoryDoc._id;
         } else {
-          const newCategory = await Category.create({ 
-            cat_name: category, 
-            cat_pic: 'no-image.jpg' 
-          });
-          categoryId = newCategory._id;
+          const newCat = await Category.create({ cat_name: category, cat_pic: 'no-image.jpg' });
+          categoryId = newCat._id;
         }
       }
       updates.category = categoryId;
     }
 
-    // Handle images
-    if (req.files && req.files['pic']) {
-      updates.pic1 = req.files['pic'][0].filename;
-    }
-    if (req.files && req.files['picHover']) {
-      updates.picHover = req.files['picHover'][0].filename;
-    }
+    // Images are Cloudinary URLs — store directly
+    if (req.body.pic)      updates.pic1     = req.body.pic;
+    if (req.body.picHover) updates.picHover = req.body.picHover;
 
-    // Handle optional fields
-    if (oldPrice) updates.oldPrice = oldPrice;
+    // Colors
+    const colorsRaw      = req.body['colors[]']     || req.body.colors;
+    const colorImagesRaw = req.body['colorImages[]'] || req.body.colorImages;
 
-    // Handle colors with per-color images
-    const colorsRaw = req.body['colors[]'] || colors;
     if (colorsRaw) {
-      const colorArr = Array.isArray(colorsRaw) ? colorsRaw : [colorsRaw];
-      const colorImages = req.files['colorImages'] || [];
+      const colorArr      = Array.isArray(colorsRaw)      ? colorsRaw      : [colorsRaw];
+      const colorImageArr = colorImagesRaw
+        ? (Array.isArray(colorImagesRaw) ? colorImagesRaw : [colorImagesRaw])
+        : [];
+
       updates.colors = colorArr.map((hex, i) => ({
         color: hex,
-        image: colorImages[i] ? colorImages[i].filename : 'no-image.jpg'
+        image: colorImageArr[i] || 'no-image.jpg'
       }));
     }
 
     const sizesRaw = req.body.sizes || req.body['sizes[]'];
     if (sizesRaw) updates.sizes = Array.isArray(sizesRaw) ? sizesRaw : [sizesRaw];
 
-    const updatedProduct = await Product.findByIdAndUpdate(
-      req.params.id, 
-      updates, 
-      { new: true }
-    ).populate('category');
-    
-    console.log('Product updated successfully');
-    res.json({ success: true, message: 'Product updated successfully', data: updatedProduct });
+    const updated = await Product.findByIdAndUpdate(req.params.id, updates, { new: true }).populate('category');
+    console.log('✅ Product updated:', updated._id);
+    res.json({ success: true, message: 'Product updated successfully', data: updated });
   } catch (err) {
     console.error('Error updating product:', err);
     res.status(500).json({ success: false, message: err.message });
@@ -199,10 +178,9 @@ exports.getPopularProducts = async (req, res) => {
 exports.getRandomPopularProducts = async (req, res) => {
   try {
     const products = await Product.aggregate([
-      { $match: { popular: true } },  // only strictly true
+      { $match: { popular: true } },
       { $sample: { size: 5 } }
     ]);
-
     const populated = await Product.populate(products, { path: 'category' });
     res.json({ success: true, data: populated });
   } catch (err) {
